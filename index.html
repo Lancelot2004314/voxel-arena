@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voxel Arena - Play Now</title>
+<meta name="description" content="A dark fantasy voxel roguelike shooter. Fight through endless waves of enemies in a brutal arena.">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0a0a0f;--surface:#12121a;--accent:#ff3c5f;--accent2:#00d4ff;
+    --text:#e8e8f0;--text-dim:#6b6b80;--glow:rgba(255,60,95,0.3);
+  }
+  body{
+    background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    overflow:hidden;height:100vh;
+  }
+
+  /* ===== LOADING SCREEN ===== */
+  #loadingScreen{
+    position:fixed;inset:0;z-index:1000;
+    background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    transition:opacity 0.6s ease;
+  }
+  #loadingScreen.hidden{opacity:0;pointer-events:none}
+  .logo-title{
+    font-size:clamp(2rem,6vw,4rem);font-weight:900;letter-spacing:0.1em;
+    text-transform:uppercase;margin-bottom:0.5rem;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    background-clip:text;
+    text-shadow:0 0 60px var(--glow);
+    animation:pulse 2s ease-in-out infinite;
+  }
+  .logo-sub{font-size:clamp(0.8rem,2vw,1.1rem);color:var(--text-dim);letter-spacing:0.3em;text-transform:uppercase;margin-bottom:3rem}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+
+  /* Progress bar */
+  .progress-wrap{
+    width:min(400px,80vw);height:4px;background:rgba(255,255,255,0.06);
+    border-radius:2px;overflow:hidden;position:relative;
+  }
+  .progress-bar{
+    height:100%;width:0%;border-radius:2px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    transition:width 0.3s ease;
+    box-shadow:0 0 12px var(--glow);
+  }
+  .progress-text{
+    margin-top:1rem;font-size:0.85rem;color:var(--text-dim);
+    font-variant-numeric:tabular-nums;
+  }
+  .loading-hint{
+    position:absolute;bottom:2rem;font-size:0.75rem;color:var(--text-dim);
+    letter-spacing:0.05em;animation:fadeInOut 3s ease infinite;
+  }
+  @keyframes fadeInOut{0%,100%{opacity:0.3}50%{opacity:0.8}}
+
+  /* ===== GAME CONTAINER ===== */
+  #gameContainer{
+    width:100vw;height:100vh;display:flex;flex-direction:column;
+    background:var(--bg);
+  }
+
+  /* Top bar */
+  .top-bar{
+    height:40px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 1rem;background:var(--surface);border-bottom:1px solid rgba(255,255,255,0.05);
+    flex-shrink:0;z-index:10;
+  }
+  .top-bar .brand{
+    font-size:0.85rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .top-bar .controls{display:flex;gap:0.5rem;align-items:center}
+  .btn{
+    padding:0.35rem 0.8rem;border:1px solid rgba(255,255,255,0.1);border-radius:4px;
+    background:transparent;color:var(--text);font-size:0.75rem;cursor:pointer;
+    transition:all 0.2s;letter-spacing:0.05em;text-transform:uppercase;
+  }
+  .btn:hover{background:rgba(255,255,255,0.08);border-color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .btn.primary:hover{background:#ff5070;box-shadow:0 0 16px var(--glow)}
+
+  /* Canvas wrapper */
+  #unityFrame{
+    flex:1;position:relative;overflow:hidden;background:#000;
+  }
+  #unity-canvas{
+    width:100%!important;height:100%!important;display:block;
+    cursor:default;
+  }
+
+  /* Fullscreen styling */
+  :fullscreen #gameContainer,.fullscreen #gameContainer{height:100vh}
+  :fullscreen .top-bar,.fullscreen .top-bar{display:none}
+  :fullscreen #unity-canvas,.fullscreen #unity-canvas{width:100vw!important;height:100vh!important}
+
+  /* Mobile warning */
+  .mobile-warning{
+    display:none;position:fixed;inset:0;z-index:2000;
+    background:var(--bg);flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:2rem;
+  }
+  .mobile-warning h2{font-size:1.5rem;margin-bottom:1rem;color:var(--accent)}
+  .mobile-warning p{color:var(--text-dim);max-width:300px;line-height:1.6}
+  @media(max-width:768px){.mobile-warning{display:flex}}
+</style>
+</head>
+<body>
+
+<!-- Mobile Warning -->
+<div class="mobile-warning">
+  <h2>Desktop Required</h2>
+  <p>This game requires a keyboard and mouse. Please open this page on a desktop or laptop computer.</p>
+</div>
+
+<!-- Loading Screen -->
+<div id="loadingScreen">
+  <div class="logo-title">Voxel Arena</div>
+  <div class="logo-sub">Dark Fantasy Roguelike</div>
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div class="progress-text" id="progressText">Initializing...</div>
+  <div class="loading-hint" id="loadingHint">WASD to move / Mouse to aim / Space to dash</div>
+</div>
+
+<!-- Game Container -->
+<div id="gameContainer" style="display:none">
+  <div class="top-bar">
+    <div class="brand">Voxel Arena</div>
+    <div class="controls">
+      <button class="btn" onclick="toggleFullscreen()" id="fsBtn">Fullscreen</button>
+      <button class="btn" onclick="toggleMute()" id="muteBtn">Mute</button>
+    </div>
+  </div>
+  <div id="unityFrame">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+  </div>
+</div>
+
+<!-- Unity Loader -->
+<script src="Build/WebGL.loader.js"></script>
+<script>
+  const hints = [
+    "WASD to move / Mouse to aim / Space to dash",
+    "Hold Shift to sprint for extra speed",
+    "Collect power-ups to upgrade your weapons",
+    "Every 5 waves a boss will appear",
+    "Chain kills to build your combo meter",
+    "Choose your character wisely - each has unique abilities",
+    "Watch out for elite enemies with special modifiers",
+    "Dash grants brief invincibility frames",
+  ];
+  let hintIdx = 0;
+  setInterval(() => {
+    hintIdx = (hintIdx + 1) % hints.length;
+    const el = document.getElementById("loadingHint");
+    if (el) el.textContent = hints[hintIdx];
+  }, 3500);
+
+  // Unity loading
+  const canvas = document.querySelector("#unity-canvas");
+  const progressBar = document.getElementById("progressBar");
+  const progressText = document.getElementById("progressText");
+
+  createUnityInstance(canvas, {
+    dataUrl: "Build/WebGL.data.unityweb",
+    frameworkUrl: "Build/WebGL.framework.js.unityweb",
+    codeUrl: "Build/WebGL.wasm.unityweb",
+    streamingAssetsUrl: "StreamingAssets",
+    companyName: "DefaultCompany",
+    productName: "MyGame",
+    productVersion: "1.0",
+  }, (progress) => {
+    const pct = Math.round(progress * 100);
+    progressBar.style.width = pct + "%";
+    if (pct < 30) progressText.textContent = "Loading assets... " + pct + "%";
+    else if (pct < 70) progressText.textContent = "Preparing arena... " + pct + "%";
+    else if (pct < 100) progressText.textContent = "Almost ready... " + pct + "%";
+    else progressText.textContent = "Starting game...";
+  }).then((instance) => {
+    window.unityInstance = instance;
+    // Fade out loading screen, show game
+    document.getElementById("loadingScreen").classList.add("hidden");
+    document.getElementById("gameContainer").style.display = "flex";
+    setTimeout(() => {
+      document.getElementById("loadingScreen").style.display = "none";
+      canvas.focus();
+    }, 600);
+  }).catch((err) => {
+    progressText.textContent = "Error: " + err.message;
+    progressText.style.color = "#ff3c5f";
+    console.error("Unity load error:", err);
+  });
+
+  // Fullscreen
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
+  }
+  document.addEventListener("fullscreenchange", () => {
+    const btn = document.getElementById("fsBtn");
+    btn.textContent = document.fullscreenElement ? "Exit Fullscreen" : "Fullscreen";
+  });
+
+  // Mute
+  let muted = false;
+  function toggleMute() {
+    muted = !muted;
+    if (window.unityInstance) {
+      // Unity WebGL audio context
+      const ctx = window.unityInstance.Module.audioContext;
+      if (ctx) {
+        if (muted) ctx.suspend();
+        else ctx.resume();
+      }
+    }
+    document.getElementById("muteBtn").textContent = muted ? "Unmute" : "Mute";
+  }
+
+  // Prevent right-click menu on canvas
+  canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+  // Lock pointer on canvas click for FPS-style controls
+  canvas.addEventListener("click", () => {
+    if (!document.pointerLockElement) canvas.requestPointerLock();
+  });
+</script>
+</body>
+</html>
