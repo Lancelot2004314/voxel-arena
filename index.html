@@ -89,14 +89,14 @@
     flex:1;position:relative;overflow:hidden;background:#000;
   }
   #unity-canvas{
-    width:100%!important;height:100%!important;display:block;
+    display:block;
     cursor:default;
   }
 
   /* Fullscreen styling */
   :fullscreen #gameContainer,.fullscreen #gameContainer{height:100vh}
   :fullscreen .top-bar,.fullscreen .top-bar{display:none}
-  :fullscreen #unity-canvas,.fullscreen #unity-canvas{width:100vw!important;height:100vh!important}
+  :fullscreen #unityFrame{width:100vw;height:100vh}
 
   /* Mobile warning */
   .mobile-warning{
@@ -167,6 +167,17 @@
   const progressBar = document.getElementById("progressBar");
   const progressText = document.getElementById("progressText");
 
+  // Set canvas buffer to match actual display area (prevents CSS downscaling of fonts)
+  function fitCanvasToWindow() {
+    const w = window.innerWidth;
+    const h = window.innerHeight - 40; // subtract top bar
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+  }
+  fitCanvasToWindow();
+
   createUnityInstance(canvas, {
     dataUrl: "Build/WebGL.data.unityweb",
     frameworkUrl: "Build/WebGL.framework.js.unityweb",
@@ -175,6 +186,7 @@
     companyName: "DefaultCompany",
     productName: "MyGame",
     productVersion: "1.0",
+    devicePixelRatio: 1,
   }, (progress) => {
     const pct = Math.round(progress * 100);
     progressBar.style.width = pct + "%";
@@ -189,8 +201,14 @@
     document.getElementById("gameContainer").style.display = "flex";
     setTimeout(() => {
       document.getElementById("loadingScreen").style.display = "none";
+      fitCanvasToWindow();
       canvas.focus();
     }, 600);
+
+    // Keep canvas buffer matched to display on resize
+    window.addEventListener("resize", () => {
+      fitCanvasToWindow();
+    });
   }).catch((err) => {
     progressText.textContent = "Error: " + err.message;
     progressText.style.color = "#ff3c5f";
